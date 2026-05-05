@@ -1,0 +1,18 @@
+# patchwork configuration file
+# Copy to patchwork.yaml and adjust paths for your environment.
+
+version: "1"
+
+repos:
+  # Each entry describes a git repository patchwork should track.
+  - name: backend
+    path: ../backend          # relative or absolute path to the repo
+    remote: origin            # optional: remote name used when checking status
+
+  - name: frontend
+    path: ../frontend
+    remote: origin
+
+  - name: infra
+    path: /home/user/projects/infra
+    # remote is optional; omit if not needed
