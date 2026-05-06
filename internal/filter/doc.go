@@ -6,6 +6,14 @@
 // criterion, making it easy to run a targeted subset of patches without
 // modifying the underlying configuration.
 //
+// Filtering rules:
+//   - Names: patch name must match one of the provided names (exact match).
+//   - Tags: patch must carry at least one of the provided tags.
+//   - Repos: patch must target at least one of the provided repos.
+//
+// When multiple criteria are set, a patch must satisfy all of them (AND
+// semantics). An empty Options struct passes every patch through unchanged.
+//
 // Example:
 //
 //	matched := filter.Apply(cfg.Patches, filter.Options{
