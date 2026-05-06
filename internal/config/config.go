@@ -48,6 +48,16 @@ func (c *Config) Save(path string) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
+// FindRepo returns the Repo with the given name, or an error if not found.
+func (c *Config) FindRepo(name string) (*Repo, error) {
+	for i := range c.Repos {
+		if c.Repos[i].Name == name {
+			return &c.Repos[i], nil
+		}
+	}
+	return nil, fmt.Errorf("repo %q not found", name)
+}
+
 func (c *Config) validate() error {
 	seen := make(map[string]struct{}, len(c.Repos))
 	for i, r := range c.Repos {
