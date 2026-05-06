@@ -1,80 +1,96 @@
+// Package state manages the persistent record of which patches have been
+// applied to which repositories, along with their status and timestamps.
 package state
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 )
 
-// PatchStatus represents the application status of a single patch on a repo.
-type PatchStatus struct {
-	PatchName  string    `json:"patch_name"`
-	Repo       string    `json:"repo"`
-	Applied    bool      `json:"applied"`
-	AppliedAt  time.Time `json:"applied_at,omitempty"`
-	Checksum   string    `json:"checksum"`
+// Status values for a patch entry.
+const (
+	StatusPending = "pending"
+	StatusApplied = "applied"
+	StatusFailed  = "failed"
+	StatusSkipped = "skipped"
+)
+
+// Entry records the state of a single patch.
+type Entry struct {
+	Name      string `json:"name"`
+	Repo      string `json:"repo"`
+	Status    string `json:"status"`
+	AppliedAt string `json:"applied_at,omitempty"`
+	Note      string `json:"note,omitempty"`
 }
 
-// State holds the full tracked state for all patches across all repos.
+// State holds all patch entries keyed by patch name.
 type State struct {
-	Entries []PatchStatus `json:"entries"`
+	entries map[string]Entry
 }
 
-// Load reads state from the given JSON file path.
-// Returns an empty State if the file does not exist.
+// New returns an empty State.
+func New() *State {
+	return &State{entries: make(map[string]Entry)}
+}
+
+// Load reads state from a JSON file at path. Returns empty State if missing.
 func Load(path string) (*State, error) {
 	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return New(), nil
+	}
 	if err != nil {
-		if os.IsNotExist(err) {
-			return &State{}, nil
-		}
-		return nil, err
+		return nil, fmt.Errorf("state: read: %w", err)
 	}
-	var s State
-	if err := json.Unmarshal(data, &s); err != nil {
-		return nil, err
+	var entries []Entry
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return nil, fmt.Errorf("state: unmarshal: %w", err)
 	}
-	return &s, nil
+	st := New()
+	for _, e := range entries {
+		st.entries[e.Name] = e
+	}
+	return st, nil
 }
 
-// Save writes the state to the given JSON file path.
+// Save persists the state to a JSON file at path.
 func (s *State) Save(path string) error {
-	data, err := json.MarshalIndent(s, "", "  ")
+	list := make([]Entry, 0, len(s.entries))
+	for _, e := range s.entries {
+		list = append(list, e)
+	}
+	data, err := json.MarshalIndent(list, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("state: marshal: %w", err)
 	}
-	return os.WriteFile(path, data, 0644)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return fmt.Errorf("state: write: %w", err)
+	}
+	return nil
 }
 
-// Upsert adds or updates the status entry for a given patch+repo pair.
-func (s *State) Upsert(ps PatchStatus) {
-	for i, e := range s.Entries {
-		if e.PatchName == ps.PatchName && e.Repo == ps.Repo {
-			s.Entries[i] = ps
-			return
-		}
+// Upsert inserts or replaces an entry.
+func (s *State) Upsert(e Entry) {
+	if e.Status == StatusApplied && e.AppliedAt == "" {
+		e.AppliedAt = time.Now().UTC().Format(time.RFC3339)
 	}
-	s.Entries = append(s.Entries, ps)
+	s.entries[e.Name] = e
 }
 
-// Get returns the PatchStatus for a given patch+repo pair, and whether it was found.
-func (s *State) Get(patchName, repo string) (PatchStatus, bool) {
-	for _, e := range s.Entries {
-		if e.PatchName == patchName && e.Repo == repo {
-			return e, true
-		}
-	}
-	return PatchStatus{}, false
+// Get returns the entry for patchName and whether it was found.
+func (s *State) Get(patchName string) (Entry, bool) {
+	e, ok := s.entries[patchName]
+	return e, ok
 }
 
-// Delete removes the status entry for a given patch+repo pair.
-// Returns true if an entry was found and removed, false if no matching entry existed.
-func (s *State) Delete(patchName, repo string) bool {
-	for i, e := range s.Entries {
-		if e.PatchName == patchName && e.Repo == repo {
-			s.Entries = append(s.Entries[:i], s.Entries[i+1:]...)
-			return true
-		}
+// All returns all entries as a slice.
+func (s *State) All() []Entry {
+	list := make([]Entry, 0, len(s.entries))
+	for _, e := range s.entries {
+		list = append(list, e)
 	}
-	return false
+	return list
 }
