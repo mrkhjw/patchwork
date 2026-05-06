@@ -66,3 +66,15 @@ func (s *State) Get(patchName, repo string) (PatchStatus, bool) {
 	}
 	return PatchStatus{}, false
 }
+
+// Delete removes the status entry for a given patch+repo pair.
+// Returns true if an entry was found and removed, false if no matching entry existed.
+func (s *State) Delete(patchName, repo string) bool {
+	for i, e := range s.Entries {
+		if e.PatchName == patchName && e.Repo == repo {
+			s.Entries = append(s.Entries[:i], s.Entries[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
