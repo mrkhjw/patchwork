@@ -64,6 +64,18 @@ func TestResolve_MissingFile(t *testing.T) {
 	}
 }
 
+func TestResolve_EmptyMap(t *testing.T) {
+	dir := t.TempDir()
+
+	results, err := resolver.Resolve(dir, map[string]string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("expected 0 results for empty map, got %d", len(results))
+	}
+}
+
 func TestAnyMissing_True(t *testing.T) {
 	dir := t.TempDir()
 	writeTempPatch(t, dir, "present.patch")
