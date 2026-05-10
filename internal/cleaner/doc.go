@@ -8,7 +8,19 @@
 // Entries with status "pending" or "failed" are never removed automatically,
 // as they may still need attention or retrying.
 //
-// Typical usage:
+// # Staleness Rules
+//
+// The cleaner distinguishes between two kinds of staleness:
+//
+//   - File-missing: the patch was applied but its source file has since been
+//     deleted or moved. The state entry is safe to drop because the patch
+//     cannot be re-applied or rolled back without the file.
+//
+//   - Config-missing: the patch name no longer appears in the active
+//     configuration. This typically happens when a patch is intentionally
+//     retired and removed from the config file.
+//
+// # Typical Usage
 //
 //	results := cleaner.Clean(cfg, st)
 //	if cleaner.AnyRemoved(results) {
