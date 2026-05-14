@@ -96,3 +96,15 @@ func TestWatch_AlertMessage_ContainsPatchName(t *testing.T) {
 		t.Errorf("expected patch name my-patch, got %s", alerts[0].PatchName)
 	}
 }
+
+func TestWatch_MultipleEntries_IndependentAlerts(t *testing.T) {
+	entries := []state.Entry{
+		entry("p1", "repo-a", "pending", 1*time.Hour),  // fresh, no alert
+		entry("p2", "repo-b", "pending", 30*time.Hour), // old, warn
+		entry("p3", "repo-c", "failed", 96*time.Hour),  // very old, crit
+	}
+	alerts := watchdog.Watch(entries, baseTime, watchdog.DefaultPolicy())
+	if len(alerts) != 2 {
+		t.Fatalf("expected 2 alerts, got %d", len(alerts))
+	}
+}
